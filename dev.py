@@ -30,3 +30,12 @@ print
 loops = graph.detect_loops()
 for loop in loops :
     print map(lambda x: hex(x), loop)
+
+print
+varslice.highlight_loop_branch(bv, 0x100000f2e)
+
+print
+
+for function in bv.functions :
+    graph = varslice.graph_function(function)
+    print function.name, len(graph.detect_loops())

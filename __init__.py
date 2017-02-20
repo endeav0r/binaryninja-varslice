@@ -714,7 +714,21 @@ class Graph :
                     loops += loop_dfs(path + [vertex_index], successor_index)
             return loops
 
-        return loop_dfs([], self.entry_index)
+        loops = loop_dfs([], self.entry_index)
+
+        # If we arrived at the same loop through different methods, we'll have
+        # duplicates of the same loop, which we don't want. We need to remove
+        # identical loop sets.
+        for i in range(len(loops)) :
+            loops[i].sort()
+
+        # This creates a pseudo-hash table of the loops and guarantees
+        # uniqueness
+        loop_hashes = {}
+        for i in range(len(loops)) :
+            loop_hashes[",".join(map(lambda x: str(x), loops[i]))] = loops[i]
+
+        return loop_hashes.values()
 
 
     def get_edges_by_head_index (self, head_index) :
@@ -965,6 +979,21 @@ def highlight_loop_branch (bv, address) :
     bb.function.set_user_instr_highlight(last_ins.address,
                                          HighlightStandardColor.MagentaHighlightColor)
 
+def loop_analysis (bv) :
+    report = []
+    for function in bv.functions :
+        graph = graph_function(function)
+        report.append((function.name, len(graph.detect_loops())))
+
+    report.sort(key=lambda x: x[1])
+    report.reverse()
+
+    markdown = "Function Name | # Detected Loops\n"
+    markdown += "--- | ---\n"
+    markdown += "\n".join(map(lambda x: x[0] + "|" + str(x[1]), report))
+
+    interaction.show_markdown_report("Loop Detection", markdown)
+
 
 PluginCommand.register_for_address("Highlight Dominators",
                                    "Highlights all dominators of a block",
@@ -985,3 +1014,7 @@ PluginCommand.register_for_address("Highlight Loop Branch",
 PluginCommand.register_for_address("Highlight Predecessors",
                                    "Highlights all predecessors of a block",
                                    highlight_predecessors)
+
+PluginCommand.register("Loop Detection",
+                       "Detect and count loops for all functions",
+                       loop_analysis)
