@@ -1,11 +1,5 @@
-import sys
-
-EXAMPLE_APPLICATION_BINARY = "/Users/endeavor/code/complexity/example0"
-BINARY_NINJA_API_PATH = "/Applications/Binary Ninja.app/Contents/Resources/python"
-
-sys.path.append(BINARY_NINJA_API_PATH)
-
 from binaryninja import *
+import copy
 
 SSAObject = None
 
@@ -44,6 +38,48 @@ def getSSA() :
         SSAObject = SSA()
     return SSAObject
 
+
+def set_intersection (sets) :
+    '''
+    Takes a list of lists, and returns the intersection of those lists.
+    '''
+    if len(sets) < 1 :
+        return sets
+    intersection = copy.deepcopy(sets[0])
+    for s in sets :
+        i = 0
+        while i < len(intersection) :
+            if intersection[i] not in s :
+                del intersection[i]
+            else :
+                i = i + 1
+    return intersection
+
+
+def set_equivalence (sets) :
+    '''
+    Takes a list of lists, and returns True if all lists are equivalent, False
+    otherwise.
+    '''
+    # An empty set is equivalent
+    if len(sets) < 0 :
+        return True
+    # Sets of differing length are obviously not equivalent
+    l = len(sets[0])
+    for s in sets :
+        if len(s) != l :
+            return False
+
+    sets_copy = copy.deepcopy(sets)
+    for i in range(len(sets_copy)) :
+        sets_copy[i].sort()
+
+    for i in range(len(sets_copy[0])) :
+        for j in range(len(sets_copy)) :
+            if sets_copy[0][i] != sets_copy[j][i] :
+                return False
+
+    return True
 
 
 def expression_registers (il) :
@@ -427,13 +463,27 @@ class Vertex :
 
 class Graph :
 
-    def __init__ (self) :
-        self.next_vertex_index = 1
+    def __init__ (self, entry_index=None) :
+        # When we create vertices, if an index is not specified, we increment
+        # this to ensure we are creating unique vertex indicies
+        self.next_vertex_index = -1000
+        # A mapping of vertices by vertex index to vertex
         self.vertices = {}
+        # When we create edges, we increment this to create unique edge indicies
         self.next_edge_index = 1
+
+        # We keep references to the same edge in three different places to speed
+        # up the searching for edges
+
+        # A mapping of edges by edge index to edge
         self.edges = {}
+        # A mapping of edges by head_index to edge
         self.edges_by_head_index = {}
+        # A mapping of edges by tail_index to edge
         self.edges_by_tail_index = {}
+
+        # An entry_index simplifies lots of stuff, like computing dominators
+        self.entry_index = entry_index
 
     def add_edge (self, head, tail, data=None) :
         '''
@@ -513,6 +563,36 @@ class Graph :
         self.vertices[index] = Vertex(self, index, data)
         return self.vertices[index]
 
+    def compute_dominators (self) :
+        '''
+        Returns a mapping of vertex nodes to a list of dominators for that
+        vertex. This is quadratic time, so have fun!.
+        '''
+        dominators = {}
+
+        for vertex_index in self.vertices :
+            dominators[vertex_index] = self.vertices.keys()
+
+        dominators_changed = True
+
+        while dominators_changed :
+            dominators_changed = False
+
+            # For each vertex
+            keys = dominators.keys()
+            for vertex_index in keys :
+                vertex = self.get_vertex_from_index(vertex_index)
+                # Recompute dominators
+                doms = set_intersection([dominators[i] for i in vertex.get_predecessor_indices()])
+                doms += [vertex_index]
+                # Is this new set of dominators different from what we had before ?
+                if set_equivalence([doms, dominators[vertex_index]]) :
+                    continue
+                dominators_changed = True
+                dominators[vertex_index] = doms
+
+        return dominators
+
 
     def compute_predecessors (self) :
         '''
@@ -526,8 +606,6 @@ class Graph :
         for vertex_index in self.vertices :
             vertex = self.vertices[vertex_index]
             predecessors[vertex_index] = vertex.get_predecessor_indices()
-            # A vertex is a predecessor of itself
-            predecessors[vertex_index].append(vertex_index)
 
         # We now do successive propogation passes until we no longer propogate
         propogate = True
@@ -590,7 +668,7 @@ class Graph :
 
 
 def graph_function_low_level_il (function) :
-    graph = Graph()
+    graph = Graph(0)
 
     # get the low_level_il basic blocks
     basic_blocks = function.low_level_il.basic_blocks
@@ -610,7 +688,7 @@ def graph_function_low_level_il (function) :
 
 
 def graph_function (function) :
-    graph = Graph()
+    graph = Graph(function.start)
 
     basic_blocks = function.basic_blocks
 
@@ -692,7 +770,34 @@ def highlight_predecessors (bv, address) :
         bb = graph.get_vertex_from_index(predecessor).data
         bb.set_user_highlight(HighlightStandardColor.BlueHighlightColor)
 
+    # We'll go ahead and highlight the target veretx as well
+    bv.get_basic_blocks_at(address)[0].set_user_highlight(HighlightStandardColor.BlueHighlightColor)
+
+
+def highlight_dominators (bv, address) :
+    bb = bv.get_basic_blocks_at(address)[0]
+    graph = graph_function(bb.function)
+
+    # Let's start by clearing al the basic block highlights.
+    for bb_ in graph.get_vertices_data() :
+        bb_.set_user_highlight(HighlightStandardColor.NoHighlightColor)
+
+    # Get this block's predecessors.
+    dominators = graph.compute_dominators()[bb.start]
+
+    log.log_warn(dominators)
+
+    # Highlight all predecessors blue.
+    for dominator in dominators :
+        bb = graph.get_vertex_from_index(dominator).data
+        bb.set_user_highlight(HighlightStandardColor.GreenHighlightColor)
+
+
+
 
 PluginCommand.register_for_address("Highlight Predecessors",
                                    "Highlights all predecessors of a block",
                                    highlight_predecessors)
+PluginCommand.register_for_address("Highlight Dominators",
+                                   "Highlights all dominators of a block",
+                                   highlight_dominators)
