@@ -932,52 +932,52 @@ def highlight_innermost_loop (bv, address) :
             b = graph.get_vertex_from_index(vertex_index).data
             b.set_user_highlight(HighlightStandardColor.OrangeHighlightColor)
 
+
 def highlight_loop_branch (bv, address) :
+
+    def find_loop_dominator (dominators, loop) :
+        dominator_sets = []
+        # Get dominator sets for all nodes in loop
+        for d in dominators :
+            if d in loop :
+                dominator_sets.append(copy.deepcopy(dominators[d]))
+        # Remove all indicies not in loop
+        for s in dominator_sets :
+            i = 0
+            while i < len(s) :
+                if s[i] not in loop :
+                    del s[i]
+                else :
+                    i += 1
+        # The one dominator all vertices have in common is the head of this loop
+        log.log_info('dominator_sets' + str(dominator_sets))
+        loop_dominator = set_intersection(dominator_sets)[0]
+        return loop_dominator
+
+
     bb = bv.get_basic_blocks_at(address)[0]
     graph = graph_function_low_level_il(bb.function)
 
     loops = graph.detect_loops()
-
-    # Find this loop
-    loop = None
-    for l in loops :
-        if bb.start in map(lambda v: graph.get_vertex_from_index(v).data.basic_block[0].address, l) :
-            loop = l
-            break
-
-    if loop == None :
-        log.log_error("block not in loop")
-        return
-
-    print 'loop', loop
-
-    # Find overall dominator for this loop
     dominators = graph.compute_dominators()
-    dominator_sets = []
-    # Get dominator sets for all nodes in loop
-    for d in dominators :
-        if d in loop :
-            dominator_sets.append(dominators[d])
-    # Remove all indicies not in loop
-    for s in dominator_sets :
-        i = 0
-        while i < len(s) :
-            if s[i] not in loop :
-                del s[i]
-            else :
-                i += 1
-    # The one dominator all vertices have in common is the head of this loop
-    loop_dominator = set_intersection(dominator_sets)[0]
 
-    # Get this LLILBlock
-    block = graph.get_vertex_from_index(loop_dominator).data.basic_block
+    # For each loop this vertex is in
+    for loop in loops :
+        if bb.start not in map(lambda v: graph.get_vertex_from_index(v).data.basic_block[0].address, loop) :
+            continue
 
-    # Get the last instruction
-    last_ins = block[-1]
+        # Find overall dominator for this loop
+        loop_dominator = find_loop_dominator(dominators, loop)
 
-    # Highlight it
-    bb.function.set_user_instr_highlight(last_ins.address,
-                                         HighlightStandardColor.MagentaHighlightColor)
+        # Get this LLILBlock
+        block = graph.get_vertex_from_index(loop_dominator).data.basic_block
+
+        # Get the last instruction
+        last_ins = block[-1]
+
+        # Highlight it
+        bb.function.set_user_instr_highlight(last_ins.address,
+                                             HighlightStandardColor.MagentaHighlightColor)
 
 def loop_analysis (bv) :
     report = []
