@@ -319,19 +319,22 @@ class InsAnalysis :
 
         @param in_variables a dict of variable identifiers to VariableAnalysis
                             which are valid before this instruction is executed.
-        @return A dict of variable identifiers to VariableAnalysis which are
-                modified/written by this instruction.
+        @return A dict of identifiers to VariableAnalysis instances, which are
+                the state of all variables after this instruction. I.E. this is
+                in_variables with identifiers that were written replaced with
+                their new VariableAnalysis instances.
         '''
 
         # Get an instance of our SSA creator
         ssa = getSSA()
 
-        # TODO I wonder if this copies values, and the terrible repurcussions if
-        # this doesn't... which I doubt it does... bugs galore!
-        # This gives us the string identifiers of written and read registers
         written, read = il_registers(self.il)
 
         print written, read, self.il, self.il.operation
+
+        # We don't want to modify the in_variables we were given. We can now
+        # changes this up at will.
+        in_variables = copy.deepcopy(in_variables)
 
         # We need to first go through read registers, and see if they are in
         # our in_variables. If not, we add those.
@@ -341,7 +344,7 @@ class InsAnalysis :
             if r not in in_variables :
                 self.read[r] = VariableAnalysis(r, ssa.new_ssa(r))
             else :
-                self.read[r] = in_variables[r]
+                self.read[r] = copy.deepcopy(in_variables[r])
 
         # No we go through written variables, and apply SSA to them
         written_ = {}
@@ -352,9 +355,18 @@ class InsAnalysis :
         # and we apply all of our read registers to our written registers
         for w in written_ :
             for r in self.read :
-                written_[w].dependencies.append(r)
+                written_[w].dependencies.append(copy.deepcopy(r))
 
-        return written_
+        # save our written registers
+        self.written = copy.deepcopy(written_)
+
+        # now overwrite values in in_variables to create our result
+        # written_ shouldn't have any references anywhere and should be a pure
+        # copy.
+        for w in written_ :
+            in_variables[w.identifier] = w
+
+        return in_variables # in is the new out
 
 
 
@@ -666,6 +678,45 @@ class Graph :
 
         return predecessors
 
+    def detect_loops (self) :
+        '''
+        Detects loops in the graph, and returns a set of sets, where each
+        internal set is the vertex indices of a detected loop.
+
+        Requires self.entry_index to be set.
+        '''
+
+        def loop_dfs (path, vertex_index) :
+            '''
+            Takes a set of vertex indicies we have already walked, and the next
+            vertex index to walk, and returns a set of sets, where each set is a
+            detected loop
+            @param path A set of indices we need to keep track of, but will not
+                        search. This should be in order of the search.
+            @param vertex_index The next vertex_index to walk
+            '''
+            loops = []
+
+            # Grab the successor indices
+            vertex = self.get_vertex_from_index(vertex_index)
+            successor_indices = vertex.get_successor_indices()
+            # For each successor
+            for successor_index in successor_indices :
+                # If this success is already in path, we have a loop
+                if successor_index in path :
+                    # We should truncate the path prior to successor_index
+                    loop = copy.deepcopy(path)
+                    loop.append(vertex_index)
+                    loop = loop[loop.index(successor_index):]
+                    loops.append(loop)
+                # Keep searching
+                else :
+                    loops += loop_dfs(path + [vertex_index], successor_index)
+            return loops
+
+        return loop_dfs([], self.entry_index)
+
+
     def get_edges_by_head_index (self, head_index) :
         '''
         Returns all edges who have a given head index. This is the same as the
@@ -848,6 +899,27 @@ def highlight_immediate_dominator (bv, address) :
     bb.set_user_highlight(HighlightStandardColor.CyanHighlightColor)
 
 
+def highlight_innermost_loop (bv, address) :
+    bb = bv.get_basic_blocks_at(address)[0]
+    graph = graph_function(bb.function)
+
+    # Let's start by clearing al the basic block highlights.
+    for bb_ in graph.get_vertices_data() :
+        bb_.set_user_highlight(HighlightStandardColor.NoHighlightColor)
+
+    # Get the loops
+    loops = graph.detect_loops()
+
+    # Is this bb in a loop?
+    for loop in loops :
+        if bb.start not in loop :
+            continue
+        for vertex_index in loop :
+            b = graph.get_vertex_from_index(vertex_index).data
+            b.set_user_highlight(HighlightStandardColor.OrangeHighlightColor)
+
+
+
 
 PluginCommand.register_for_address("Highlight Predecessors",
                                    "Highlights all predecessors of a block",
@@ -860,3 +932,7 @@ PluginCommand.register_for_address("Highlight Dominators",
 PluginCommand.register_for_address("Highlight Immediate Dominator",
                                    "Highlights immediate dominator of a block",
                                    highlight_immediate_dominator)
+
+PluginCommand.register_for_address("Highlight Innermost Loop",
+                                   "If this block is part of a loop, highlight the innermost loop",
+                                   highlight_innermost_loop)

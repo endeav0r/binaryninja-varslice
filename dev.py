@@ -25,3 +25,8 @@ for index in dominators :
 immediate_dominators = graph.compute_immediate_dominators()
 for index in immediate_dominators :
     print hex(index), hex(immediate_dominators[index])
+
+print
+loops = graph.detect_loops()
+for loop in loops :
+    print map(lambda x: hex(x), loop)
