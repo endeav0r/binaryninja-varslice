@@ -20,3 +20,8 @@ dominators = graph.compute_dominators()
 
 for index in dominators :
     print hex(index), map(lambda x: hex(x), dominators[index])
+
+
+immediate_dominators = graph.compute_immediate_dominators()
+for index in immediate_dominators :
+    print hex(index), hex(immediate_dominators[index])

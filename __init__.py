@@ -563,6 +563,7 @@ class Graph :
         self.vertices[index] = Vertex(self, index, data)
         return self.vertices[index]
 
+
     def compute_dominators (self) :
         '''
         Returns a mapping of vertex nodes to a list of dominators for that
@@ -593,6 +594,47 @@ class Graph :
 
         return dominators
 
+
+    def compute_immediate_dominators (self) :
+        '''
+        Returns a mapping of vertex nodes to their immediate dominators.
+        '''
+        immediate_dominators = {}
+
+        dominators = self.compute_dominators()
+
+        print
+        # For every vertex
+        for vertex_index in dominators :
+            # Get all of this vertex's strict dominators
+            sdoms = dominators[vertex_index]
+            # Well, strict dominators
+            i = 0
+            while i < len(sdoms) :
+                if sdoms[i] == vertex_index :
+                    del sdoms[i]
+                    break
+                i += 1
+            # Determine which strict dominator does not dominate any of the
+            # other dominators
+            for sdom in sdoms :
+                is_immediate_dominator = True
+                for d in dominators[vertex_index] :
+                    # Don't check this strict dominator against itself
+                    if sdom == d :
+                        continue
+                    # And don't check this strict dominator against this vertex
+                    elif vertex_index == d :
+                        continue
+                    # Does this strict dominator exist in this dominator's dominators?
+                    if sdom in dominators[d] :
+                        is_immediate_dominator = False
+                        break
+                if is_immediate_dominator :
+                    immediate_dominators[vertex_index] = sdom
+                    break
+
+        return immediate_dominators
 
     def compute_predecessors (self) :
         '''
@@ -785,19 +827,36 @@ def highlight_dominators (bv, address) :
     # Get this block's predecessors.
     dominators = graph.compute_dominators()[bb.start]
 
-    log.log_warn(dominators)
-
     # Highlight all predecessors blue.
     for dominator in dominators :
         bb = graph.get_vertex_from_index(dominator).data
         bb.set_user_highlight(HighlightStandardColor.GreenHighlightColor)
 
 
+def highlight_immediate_dominator (bv, address) :
+    bb = bv.get_basic_blocks_at(address)[0]
+    graph = graph_function(bb.function)
+
+    # Let's start by clearing al the basic block highlights.
+    for bb_ in graph.get_vertices_data() :
+        bb_.set_user_highlight(HighlightStandardColor.NoHighlightColor)
+
+    # Get this block's predecessors.
+    immediate_dominator = graph.compute_immediate_dominators()[bb.start]
+
+    bb = graph.get_vertex_from_index(immediate_dominator).data
+    bb.set_user_highlight(HighlightStandardColor.CyanHighlightColor)
+
 
 
 PluginCommand.register_for_address("Highlight Predecessors",
                                    "Highlights all predecessors of a block",
                                    highlight_predecessors)
+
 PluginCommand.register_for_address("Highlight Dominators",
                                    "Highlights all dominators of a block",
                                    highlight_dominators)
+
+PluginCommand.register_for_address("Highlight Immediate Dominator",
+                                   "Highlights immediate dominator of a block",
+                                   highlight_immediate_dominator)
