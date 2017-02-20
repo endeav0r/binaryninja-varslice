@@ -1,20 +1,23 @@
 # Variable Slice (v0.1 alpha)
 Author: **Alex Eubanks**
 
-_Slice a variable through a function._
-
 ## Description:
 
-This plugin wraps Binary Ninja LLIL functionality, applies SSA, and allows you to slice a variable's dependencies through a function.
+This plugin wraps Binary Ninja with a graph, and allows for performing analysis over the graph.
 
-THIS PLUGIN DOESN'T WORK YET.
+Currently implemented are:
+  * Highlight Predecessors
+  * Highlight Dominators
+  * Highlight Immediate Dominators
+  * Highlight Innermost Loop
+
+I eventually want to slice a variable's use through a function, but I think I'm going to wait for binaryninja crew to implement SSA first. There is, however, a healthy amount of code for a preliminary SSA-implementation in this code base.
 
 ## Minimum Version
 
 This plugin requires the following minimum version of Binary Ninja:
 
  * dev - 1.0.dev-679
-
 
 ## Required Dependencies
 
