@@ -3,7 +3,7 @@
 		"name": "Variable Slice",
 		"type": ["core", "ui", "architecture", "binaryview"],
 		"api": "python2",
-		"description": "Allows you to slice a variable through a function.",
+		"description": "Provides some common program analysis techniques.",
 		"longdescription": ".",
 		"license": {
 			"name": "MIT",
@@ -18,7 +18,7 @@
 		"version": "0.1 alpha",
 		"author": "Alex Eubanks",
 		"minimumBinaryNinjaVersion": {
-			"dev": "1.0.dev-576",
+			"dev": "1.0.dev-679",
 			"release": "9999"
 		}
 	}

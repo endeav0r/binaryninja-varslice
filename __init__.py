@@ -81,6 +81,17 @@ def set_equivalence (sets) :
 
     return True
 
+def set_union (sets) :
+    if len(sets) < 0 :
+        return []
+
+    result = []
+    for s in sets :
+        for ss in s :
+            if ss not in result :
+                result.append(ss)
+    return result
+
 
 def expression_registers (il) :
     '''
@@ -728,7 +739,25 @@ class Graph :
         for i in range(len(loops)) :
             loop_hashes[",".join(map(lambda x: str(x), loops[i]))] = loops[i]
 
-        return loop_hashes.values()
+        loops = loop_hashes.values()
+
+        # We now have unique traces through loops, but multiple traces through
+        # the same loop will show up as different loops. We want to merge traces
+        # for the same loop. We do this by finding the head of the loop for each
+        # trace, and then performing a union over the sets of vertices for loops
+        # with identical heads.
+        dominators = self.compute_dominators()
+
+        loop_heads = {}
+        for loop in loops :
+            loop_dominator = find_loop_dominator(dominators, loop)
+            if loop_dominator not in loop_heads :
+                loop_heads[loop_dominator] = loop
+            else :
+                loop_head = loop_heads[loop_dominator]
+                loop_heads[loop_dominator] = set_union([loop_head, loop])
+
+        return loop_heads.values()
 
 
     def get_edges_by_head_index (self, head_index) :
@@ -772,6 +801,25 @@ class Graph :
 
     def get_vertices_data (self) :
         return map(lambda x: x.data, [self.vertices[y] for y in self.vertices])
+
+
+def find_loop_dominator (dominators, loop) :
+    dominator_sets = []
+    # Get dominator sets for all nodes in loop
+    for d in dominators :
+        if d in loop :
+            dominator_sets.append(copy.deepcopy(dominators[d]))
+    # Remove all indicies not in loop
+    for s in dominator_sets :
+        i = 0
+        while i < len(s) :
+            if s[i] not in loop :
+                del s[i]
+            else :
+                i += 1
+    # The one dominator all vertices have in common is the head of this loop
+    loop_dominator = set_intersection(dominator_sets)[0]
+    return loop_dominator
 
 
 def graph_function_low_level_il (function) :
@@ -934,27 +982,6 @@ def highlight_innermost_loop (bv, address) :
 
 
 def highlight_loop_branch (bv, address) :
-
-    def find_loop_dominator (dominators, loop) :
-        dominator_sets = []
-        # Get dominator sets for all nodes in loop
-        for d in dominators :
-            if d in loop :
-                dominator_sets.append(copy.deepcopy(dominators[d]))
-        # Remove all indicies not in loop
-        for s in dominator_sets :
-            i = 0
-            while i < len(s) :
-                if s[i] not in loop :
-                    del s[i]
-                else :
-                    i += 1
-        # The one dominator all vertices have in common is the head of this loop
-        log.log_info('dominator_sets' + str(dominator_sets))
-        loop_dominator = set_intersection(dominator_sets)[0]
-        return loop_dominator
-
-
     bb = bv.get_basic_blocks_at(address)[0]
     graph = graph_function_low_level_il(bb.function)
 
