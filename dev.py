@@ -39,3 +39,14 @@ print 'detect loops'
 for function in bv.functions :
     graph = varslice.graph_function(function)
     print function.name, len(graph.detect_loops())
+
+
+
+from varslice.map_calls import MapCalls
+calls = MapCalls().map_calls_bv(bv)
+
+for f in calls :
+    print hex(f)
+    calls[f].sort()
+    for c in calls[f] :
+        print '', c
