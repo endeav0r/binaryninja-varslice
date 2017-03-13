@@ -20,7 +20,7 @@ class AnalysisTemplate (analysis.AnalysisModel) :
         if self.llil_handler_print :
             print '_arith_dp', llil
 
-    def _unary (self, llil, data=None) ):
+    def _unary (self, llil, data=None) :
         if self.llil_handler_print :
             print '_unary', llil
 

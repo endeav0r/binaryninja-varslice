@@ -50,3 +50,10 @@ for f in calls :
     calls[f].sort()
     for c in calls[f] :
         print '', c
+
+
+from varslice.reachingdefinitions import ReachingDefinitions
+llil_graph = varslice.graph_function_llil_instructions(bb.function)
+reachingDefinitions = ReachingDefinitions(llil_graph, bv).definitions
+
+print reachingDefinitions

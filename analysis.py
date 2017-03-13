@@ -78,31 +78,45 @@ class AnalysisModel (object) :
             LowLevelILOperation.LLIL_UNIMPL_MEM : self._unimpl_mem
         }
 
-
-    def transfer (self, llil, data=None) :
-        print self.optable[llil.operation]
+    def recursive_op (self, llil, data=None) :
         return self.optable[llil.operation](llil, data)
 
 
-    def join_lhs_rhs (self, lhs, rhs) :
+    def transfer (self, llil, data=None) :
+        return self.optable[llil.operation](llil, data)
+
+
+    def join_lhs_rhs (self, llil, lhs, rhs) :
         pass
 
 
-    def join (self, data_list) :
+    def join (self, llil, data_list) :
         '''
         Data Flow Analysis join function. Keep in mind if there are no predecessors
         this will be an empty list.
         '''
-        if len(data_list) < 2 :
-            return data_list
+        print 'join', data_list
+        # Remove any sets which are None
+        i = 0
+        while i < len(data_list) :
+            if data_list[i] == None :
+                del data_list[i]
+            else :
+                i += 1
+
+        if len(data_list) == 0 :
+            return None
+
+        if len(data_list) == 1 :
+            return data_list[0]
 
         elif len(data_list) > 2 :
             lhs = data_list[0]
             rhs = data_list[1]
-            return self.join(self.join_lhs_rhs(lhs, rhs), data_list[2:])
+            return self.join(llil, self.join_lhs_rhs(lhs, rhs), data_list[2:])
 
         else :
-            return self.join_lhs_rhs(data_list[0], data_list[1])
+            return self.join_lhs_rhs(llil, data_list[0], data_list[1])
 
 
     def state_equivalence_lhs_rhs (self, lhs, rhs) :
@@ -132,6 +146,9 @@ class AnalysisModel (object) :
         fixpoint = {}
         queue = []
 
+        '''
+        We are going to treat every instruction individually
+        '''
         for index in graph.vertices :
             fixpoint[index] = None
             queue.append(index)
@@ -143,10 +160,13 @@ class AnalysisModel (object) :
             vertex = graph.get_vertex_from_index(index)
             pred_fixpoints = map(lambda x: copy.deepcopy(fixpoint[x]), \
                                  vertex.get_predecessor_indices())
-            rolling = self.join(pred_fixpoints)
 
-            for ins in vertex.data :
-                rolling = self.transfer(ins, rolling)
+            print hex(vertex.data.address), vertex.data, vertex.get_predecessor_indices()
+
+            rolling = self.transfer(vertex.data, \
+                                    self.join(vertex.data, pred_fixpoints))
+
+            print 'rolling', rolling, fixpoint[index]
 
             if rolling != fixpoint[index] :
                 fixpoint[index] = rolling

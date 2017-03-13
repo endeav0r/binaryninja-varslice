@@ -2,10 +2,44 @@ from binaryninja import *
 import copy
 
 from graph import Graph, find_loop_dominator
+from reachingdefinitions import ReachingDefinitions
 
+def graph_function_llil_instructions (function) :
+    '''
+    Returns a graph where each LLIL instruction is a vertex in the graph
+    '''
+    graph = Graph(0)
+
+    # Get the low_level_il basic blocks
+    basic_blocks = function.low_level_il.basic_blocks
+
+    # Add all the low_level_il instructions as their own vertices
+    for basic_block in basic_blocks :
+        for ins in basic_block :
+            graph.add_vertex(ins.instr_index, ins)
+
+    # Go back through and add edges
+    for basic_block in basic_blocks :
+        # Add edges between instructions in block
+        previous_ins = None
+        for ins in basic_block :
+            if previous_ins == None :
+                previous_ins = ins.instr_index
+                continue
+            graph.add_edge_by_indices(previous_ins, ins.instr_index)
+            previous_ins = ins.instr_index
+        # Add edges between basic blocks
+        for outgoing_edge in basic_block.outgoing_edges :
+            target = outgoing_edge.target.start
+            graph.add_edge_by_indices(previous_ins, target)
+
+    return graph
 
 
 def graph_function_low_level_il (function) :
+    '''
+    Returns a graph where each LLIL Basic Block is a vertex in the graph
+    '''
     graph = Graph(0)
 
     # get the low_level_il basic blocks
@@ -26,6 +60,9 @@ def graph_function_low_level_il (function) :
 
 
 def graph_function (function) :
+    '''
+    Returns a graph where each basic block is a vertex in the graph
+    '''
     graph = Graph(function.start)
 
     basic_blocks = function.basic_blocks
@@ -154,6 +191,48 @@ def loop_analysis (bv) :
     interaction.show_markdown_report("Loop Detection", markdown)
 
 
+def reaching_definitions (bv, address) :
+    bb = bv.get_basic_blocks_at(address)[0]
+    function = bb.function
+    llil_graph = graph_function_llil_instructions(function)
+    reachingDefinitions = ReachingDefinitions(llil_graph, bv).definitions
+
+    # merge reaching definitions by address
+    defaddrs = {}
+    for i in reachingDefinitions :
+        reachdef = reachingDefinitions[i]
+        if reachdef == None :
+            continue
+        if reachdef.address not in defaddrs :
+            defaddrs[reachdef.address] = {'live': [], 'used': [], 'defined': []}
+        defaddr = defaddrs[reachdef.address]
+        for l in reachdef.live :
+            if l not in defaddr['live'] :
+                defaddr['live'].append(l)
+        for u in reachdef.used :
+            if u not in defaddr['used'] :
+                defaddr['used'].append(u)
+        for d in reachdef.defined :
+            if d not in defaddr['defined'] :
+                defaddr['defined'].append(d)
+
+    def varstring (variable) :
+        return '%s@%s' % (variable.name, hex(variable.address))
+
+    for addr in defaddrs :
+        live = ','.join(map(lambda v: str(v), defaddrs[addr]['live']))
+        used = ','.join(map(lambda v: str(v), defaddrs[addr]['used']))
+        defined = ','.join(map(lambda v: str(v), defaddrs[addr]['defined']))
+        '''
+        function.set_comment(addr, 'live: %s\nused: %s\ndefined: %s' % (
+            live, used, defined
+        ))
+        '''
+        function.set_comment(addr, 'used: %s\ndefined: %s' % (
+            used, defined
+        ))
+
+
 PluginCommand.register_for_address("Highlight Dominators",
                                    "Highlights all dominators of a block",
                                    highlight_dominators)
@@ -173,6 +252,10 @@ PluginCommand.register_for_address("Highlight Loop Branch",
 PluginCommand.register_for_address("Highlight Predecessors",
                                    "Highlights all predecessors of a block",
                                    highlight_predecessors)
+
+PluginCommand.register_for_address("Reaching Definitions",
+                                   "Comment everything with reaching definitions",
+                                   reaching_definitions)
 
 PluginCommand.register("Loop Detection",
                        "Detect and count loops for all functions",
