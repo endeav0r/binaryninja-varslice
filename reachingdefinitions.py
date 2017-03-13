@@ -183,10 +183,12 @@ class ReachingDefinitions (analysis.AnalysisModel) :
     def _arith_db (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _arith_dp', llil
+            log.log_warn(' UNHANDLED _arith_dp')
 
     def _unary (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _unary', llil
+            log.log_warn(' UNHANDLED _unary')
 
     def _set_reg (self, llil, data=None) :
         if self.llil_handler_print :
@@ -213,10 +215,12 @@ class ReachingDefinitions (analysis.AnalysisModel) :
     def _flag_cond (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _flag_cond', llil
+            log.log_warn(' UNHANDLED _flag_conf')
 
     def _flag (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _flag', llil
+            log.log_warn(' UNHANDLED _flag')
 
     def _load (self, llil, data=None) :
         if self.llil_handler_print :
@@ -266,11 +270,13 @@ class ReachingDefinitions (analysis.AnalysisModel) :
 
     def _jump (self, llil, data=None) :
         if self.llil_handler_print :
-            print ' UNHANDLED _jump', llil
+            print ' _jump', llil
+        return self.prepare_op(llil, data)
 
     def _jump_to (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _jump_to', llil
+            log.log_warn(' UNHANDLED _jump_to')
 
     def _call (self, llil, data=None) :
         if self.llil_handler_print :
@@ -288,27 +294,34 @@ class ReachingDefinitions (analysis.AnalysisModel) :
     def _test_bit (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _test_bit', llil
+            log.log_warn(' UNHANDLED _test_bit')
 
     def _syscall (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _syscall', llil
+            log.log_warn(' UNHANDLED _syscall')
 
     def _bp (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _bp', llil
+            log.log_warn(' UNHANDLED _bp')
 
     def _trap (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _trap', llil
+            log.log_warn(' UNHANDLED _trap')
 
     def _undef (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _undef', llil
+            log.log_warn(' UNHANDLED _undef')
 
     def _unimpl (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _unimpl'
+            log.log_warn(' UNHANDLED _unimpl')
 
     def _unimpl_mem (self, llil, data=None) :
         if self.llil_handler_print :
             print ' UNHANDLED _unimpl_mem'
+            log.log_warn(' UNHANDLED _unimpl_mem')

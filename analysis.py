@@ -113,7 +113,7 @@ class AnalysisModel (object) :
         elif len(data_list) > 2 :
             lhs = data_list[0]
             rhs = data_list[1]
-            return self.join(llil, self.join_lhs_rhs(lhs, rhs), data_list[2:])
+            return self.join(llil, [self.join_lhs_rhs(llil, lhs, rhs)] + data_list[2:])
 
         else :
             return self.join_lhs_rhs(llil, data_list[0], data_list[1])
