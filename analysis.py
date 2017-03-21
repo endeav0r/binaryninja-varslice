@@ -38,6 +38,7 @@ class AnalysisModel (object) :
             LowLevelILOperation.LLIL_ZX : self._zx,
             LowLevelILOperation.LLIL_SET_REG : self._set_reg,
             LowLevelILOperation.LLIL_SET_REG_SPLIT : self._set_reg_split,
+            LowLevelILOperation.LLIL_SET_FLAG : self._set_flag,
 
             LowLevelILOperation.LLIL_CMP_E : self._cmp_e,
             LowLevelILOperation.LLIL_CMP_NE : self._cmp_ne,
@@ -297,7 +298,8 @@ class AnalysisModel (object) :
         a handler for a specific unary arithmetic instruction is given. The
         instructions handled here are:
 
-        LLIL_NEG, LLIL_NOT, LLIL_SX, LLIL_ZX, LLIL_SET_REG, LLIL_SET_REG_SPLIT
+        LLIL_NEG, LLIL_NOT, LLIL_SX, LLIL_ZX, LLIL_SET_REG, LLIL_SET_REG_SPLIT,
+        LLIL_SET_FLAG
         '''
         log.log_error("_unary unsupported for this analysis")
 
@@ -317,6 +319,9 @@ class AnalysisModel (object) :
         return self._unary(llil)
 
     def _set_reg_split (self, llil, data=None) :
+        return self._unary(llil)
+
+    def _set_flag (self, llil, data=None) :
         return self._unary(llil)
 
     def _cmp (self, llil, data=None) :

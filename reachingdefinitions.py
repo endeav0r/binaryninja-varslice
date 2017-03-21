@@ -1,6 +1,8 @@
 import analysis
 import copy
 
+from binaryninja import *
+
 '''
 We will track the state of each instruction, where the state will be the
 definitions of all live variables at the conclusion of the execution of the
@@ -187,8 +189,21 @@ class ReachingDefinitions (analysis.AnalysisModel) :
 
     def _unary (self, llil, data=None) :
         if self.llil_handler_print :
-            print ' UNHANDLED _unary', llil
-            log.log_warn(' UNHANDLED _unary')
+            print ' _unary', llil
+        reachingDefinition = self.prepare_op(llil.src, data)
+        reachingDefinition.set_used(self.recursive_op(llil.src))
+        defined = [Variable(self.reg_name(llil.dest), llil.address)]
+        reachingDefinition.set_defined(defined)
+        return reachingDefinition
+
+    def _set_flag (self, llil, data=None) :
+        if self.llil_handler_print :
+            print ' _set_flag', llil
+        reachingDefinition = self.prepare_op(llil.src, data)
+        reachingDefinition.set_used(self.recursive_op(llil.src))
+        defined = [Variable(llil.dest, llil.address)]
+        reachingDefinition.set_defined(defined)
+        return reachingDefinition
 
     def _set_reg (self, llil, data=None) :
         if self.llil_handler_print :
@@ -219,8 +234,8 @@ class ReachingDefinitions (analysis.AnalysisModel) :
 
     def _flag (self, llil, data=None) :
         if self.llil_handler_print :
-            print ' UNHANDLED _flag', llil
-            log.log_warn(' UNHANDLED _flag')
+            print ' _flag'
+            return [Variable(llil.src)]
 
     def _load (self, llil, data=None) :
         if self.llil_handler_print :
@@ -275,8 +290,8 @@ class ReachingDefinitions (analysis.AnalysisModel) :
 
     def _jump_to (self, llil, data=None) :
         if self.llil_handler_print :
-            print ' UNHANDLED _jump_to', llil
-            log.log_warn(' UNHANDLED _jump_to')
+            print ' _jump_to', llil
+            return self.prepare_op(llil, data)
 
     def _call (self, llil, data=None) :
         if self.llil_handler_print :
