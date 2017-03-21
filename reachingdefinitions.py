@@ -178,9 +178,25 @@ class ReachingDefinitions (analysis.AnalysisModel) :
     def _arith (self, llil, data=None) :
         if self.llil_handler_print :
             print ' _arith', llil
-        definitions = self.optable[llil.left.operation](llil.left, data)
-        definitions += self.optable[llil.right.operation](llil.right, data)
+        lhs = self.optable[llil.left.operation](llil.left, data)
+        rhs = self.optable[llil.right.operation](llil.right, data)
+        definitions = lhs + rhs
         return definitions
+
+    def _add (self, llil, data=None) :
+        if self.llil_handler_print :
+            print ' _add', llil
+        lhs = self.optable[llil.left.operation](llil.left, data)
+        rhs = self.optable[llil.right.operation](llil.right, data)
+        if len(lhs) == 1 and \
+           lhs[0].name == self.bv.arch.stack_pointer and \
+           llil.right.operation == LowLevelILOperation.LLIL_CONST :
+            function = self.bv.get_basic_blocks_at(llil.address)[0].function
+            addend = function.get_reg_value_at(llil.address, self.bv.arch.stack_pointer).offset
+            addend += llil.right.value
+            return [Variable('var_0x%0X' % (addend), llil.address)]
+        return lhs + rhs
+
 
     def _arith_db (self, llil, data=None) :
         if self.llil_handler_print :
@@ -276,6 +292,8 @@ class ReachingDefinitions (analysis.AnalysisModel) :
         if self.llil_handler_print :
             print ' _If', llil
         reachingDefinition = self.prepare_op(llil, data)
+        log.log_info(llil.condition)
+        log.log_info(self.recursive_op(llil.condition))
         reachingDefinition.set_used(self.recursive_op(llil.condition))
         return reachingDefinition
 
@@ -298,6 +316,8 @@ class ReachingDefinitions (analysis.AnalysisModel) :
             print ' _call'
         reachingDefinition = self.prepare_op(llil, data)
         reachingDefinition.set_used(self.recursive_op(llil.dest))
+        if self.bv.arch.name == 'armv7' :
+            reachingDefinition.set_defined([Variable('r3', llil.address)])
         return reachingDefinition
 
 

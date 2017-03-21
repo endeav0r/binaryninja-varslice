@@ -1,6 +1,7 @@
 import sys
 
 EXAMPLE_APPLICATION_BINARY = "/Users/dev/code/hsvm/hsvm"
+EXAMPLE_APPLICATION_BINARY = "/Users/dev/Desktop/phantom4/test/system/bin/dji_derivekey"
 BINARY_NINJA_API_PATH = "/Applications/Binary Ninja.app/Contents/Resources/python"
 BINARY_NINJA_PLUGINS_PATH = "/Users/dev/Library/Application Support/Binary Ninja/plugins"
 
